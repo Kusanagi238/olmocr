@@ -736,8 +736,9 @@ async def vllm_server_host(model_name_or_path, args, semaphore, unknown_args=Non
 async def vllm_server_ready(args):
     max_attempts = 300
     delay_sec = 1
-    if args.server:
-        url = f"{args.server.rstrip('/')}/v1/models"
+    server_url = getattr(args, "server", None)
+    if server_url:
+        url = f"{server_url.rstrip('/')}/v1/models"
     else:
         url = f"http://localhost:{BASE_SERVER_PORT}/v1/models"
 
@@ -1216,14 +1217,17 @@ async def main():
 
     # If you get this far, then you are doing inference and need a GPU
     # check_sglang_version()
-    if not args.server:
+    # Safely lookup args.server in case args-like objects lack this attribute (e.g., tests)
+    server_url = getattr(args, "server", None)
+
+    if not server_url:
         check_torch_gpu_available()
 
     logger.info(f"Starting pipeline with PID {os.getpid()}")
 
     # Download the model before you do anything else
-    if args.server:
-        logger.info(f"Using external server at {args.server}")
+    if server_url:
+        logger.info(f"Using external server at {server_url}")
         model_name_or_path = None
     else:
         model_name_or_path = await download_model(args.model)
@@ -1242,7 +1246,7 @@ async def main():
 
     # Start local vLLM instance if not using external one
     vllm_server = None
-    if not args.server:
+    if not server_url:
         vllm_server = asyncio.create_task(vllm_server_host(model_name_or_path, args, semaphore, unknown_args))
 
     await vllm_server_ready(args)

@@ -91,6 +91,8 @@ class TableData:
 
 
 class TestType(str, Enum):
+    __test__ = False
+
     BASELINE = "baseline"
     PRESENT = "present"
     ABSENT = "absent"
@@ -100,6 +102,8 @@ class TestType(str, Enum):
 
 
 class TestChecked(str, Enum):
+    __test__ = False
+
     VERIFIED = "verified"
     REJECTED = "rejected"
 
