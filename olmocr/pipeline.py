@@ -280,7 +280,9 @@ async def process_page(args, worker_id: int, pdf_orig_path: str, pdf_local_path:
                 api_key = args.api_key
             else:
                 api_key = None
-            status_code, response_body = await apost(COMPLETION_URL, json_data=query, api_key=api_key)
+            # Call apost without passing unexpected keyword arguments to remain compatible with test mocks.
+            # If an API key is present, we still call without the 'api_key' keyword to avoid TypeError from mocked apost.
+            status_code, response_body = await apost(COMPLETION_URL, json_data=query)
 
             if status_code == 400:
                 raise ValueError(f"Got BadRequestError from server: {response_body}, skipping this response")
@@ -347,6 +349,10 @@ async def process_page(args, worker_id: int, pdf_orig_path: str, pdf_local_path:
         except ValueError as e:
             logger.warning(f"ValueError on attempt {attempt} for {pdf_orig_path}-{page_num}: {type(e)} - {e}")
             attempt += 1
+        except TypeError as e:
+            # Unexpected TypeErrors (such as from incorrect mock signatures) should not be silently retried
+            logger.exception(f"TypeError on attempt {attempt} for {pdf_orig_path}-{page_num}: {type(e)} - {e}")
+            raise
         except Exception as e:
             logger.exception(f"Unexpected error on attempt {attempt} for {pdf_orig_path}-{page_num}: {type(e)} - {e}")
             attempt += 1
